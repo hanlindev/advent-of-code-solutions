@@ -428,49 +428,146 @@ type Operation = {
     numParams: number;
 };
 
+interface OutputResult {
+    op: "output";
+    value: number;
+}
+
 type ExecutionResult =
     | {
           op: Exclude<OpName, "output">;
       }
-    | {
-          op: "output";
-          value: number;
-      };
+    | OutputResult;
 
 interface Parameter {
     mode: ParamMode;
     value: number;
 }
 
+const COLOR_BLACK = 0;
+const COLOR_WHITE = 1;
+
 //====================================== Painting Robot ====================================
 
+class GridPanel {
+    private grid: Map<string, number>;
+
+    public getColor(location: Coordinates): number {
+        return this.grid.get(this.getLocationKey(location)) ?? COLOR_BLACK;
+    }
+    public paint(location: Coordinates, value: number) {
+        this.grid.set(this.getLocationKey(location), value);
+    }
+    private getLocationKey(location: Coordinates): string {
+        return `${location.x}:${location.y}`;
+    }
+    public getDistinctPaintedCount(): number {
+        return this.grid.size;
+    }
+
+    constructor() {
+        this.grid = new Map();
+    }
+}
+
+class Coordinates {
+    public getNext(distance: number, direction: Direction): Coordinates {
+        const [xDirection, yDirection] = direction;
+        return new Coordinates(
+            this.x + xDirection * distance,
+            this.y + yDirection * distance,
+        );
+    }
+
+    constructor(
+        public x: number,
+        public y: number,
+    ) {}
+}
+
+type Direction = [number, number];
+const DIRECTIONS: Direction[] = [
+    [0, 1], // up
+    [1, 0], // right
+    [0, -1], // down
+    [-1, 0], // left
+];
+
 class PaintingRobot {
-    constructor() {}
+    private panel: GridPanel;
+
+    private location: Coordinates;
+    private directionIndex: number;
+
+    constructor() {
+        this.panel = new GridPanel();
+        this.location = new Coordinates(0, 0);
+        this.directionIndex = 0;
+    }
 
     /**
      * Get the number of distinct panels that has been painted.
      */
     getDistinctPaintedCount(): number {
-        throw new Error("Method not implemented.");
+        return this.panel.getDistinctPaintedCount();
     }
 
     /**
      * @param value direction the robot should turn: 0 means it should turn left 90 degrees,
      * and 1 means it should turn right 90 degrees.
+     *
+     * After turning, the robot should always move forward one panel.
      */
     move(value: number) {
-        throw new Error("Method not implemented.");
+        switch (value) {
+            case 0:
+                this.turnLeft();
+                break;
+            case 1:
+                this.turnRight();
+                break;
+            default:
+                throw new Error(`Unexpected move - ${value}`);
+        }
+
+        this.goForward();
+    }
+
+    goForward() {
+        this.location = this.location.getNext(1, this.getDirection());
+    }
+
+    getDirection(): Direction {
+        return DIRECTIONS[this.directionIndex];
+    }
+
+    private turnRight() {
+        this.updateDirection(1);
+    }
+
+    private turnLeft() {
+        this.updateDirection(-1);
+    }
+
+    private updateDirection(offset: number) {
+        this.directionIndex += offset;
+
+        if (this.directionIndex === -1) {
+            this.directionIndex = DIRECTIONS.length - 1;
+        } else if (this.directionIndex === DIRECTIONS.length) {
+            this.directionIndex = 0;
+        }
     }
 
     /**
      * Paint the panel underneath the robot
      */
     paint(value: number) {
-        throw new Error("Method not implemented.");
+        this.panel.paint(this.location, value);
     }
 
     getColor(): number {
-        throw new Error("Method not implemented.");
+        return this.panel.getColor(this.location);
     }
 }
 
@@ -479,47 +576,61 @@ class PaintingRobot {
 const input =
     "3,8,1005,8,311,1106,0,11,0,0,0,104,1,104,0,3,8,102,-1,8,10,101,1,10,10,4,10,1008,8,1,10,4,10,1001,8,0,29,1006,0,98,2,1005,8,10,1,1107,11,10,3,8,102,-1,8,10,1001,10,1,10,4,10,1008,8,0,10,4,10,101,0,8,62,1006,0,27,2,1002,12,10,3,8,1002,8,-1,10,1001,10,1,10,4,10,108,0,8,10,4,10,1002,8,1,90,1,1006,1,10,2,1,20,10,3,8,102,-1,8,10,1001,10,1,10,4,10,1008,8,1,10,4,10,102,1,8,121,1,1003,5,10,1,1003,12,10,3,8,102,-1,8,10,101,1,10,10,4,10,1008,8,1,10,4,10,1002,8,1,151,1006,0,17,3,8,102,-1,8,10,1001,10,1,10,4,10,108,0,8,10,4,10,1002,8,1,175,3,8,102,-1,8,10,1001,10,1,10,4,10,108,1,8,10,4,10,101,0,8,197,2,6,14,10,1006,0,92,1006,0,4,3,8,1002,8,-1,10,101,1,10,10,4,10,108,0,8,10,4,10,1001,8,0,229,1006,0,21,2,102,17,10,3,8,1002,8,-1,10,101,1,10,10,4,10,1008,8,1,10,4,10,1001,8,0,259,3,8,102,-1,8,10,1001,10,1,10,4,10,108,0,8,10,4,10,102,1,8,280,1006,0,58,1006,0,21,2,6,11,10,101,1,9,9,1007,9,948,10,1005,10,15,99,109,633,104,0,104,1,21101,937150919572,0,1,21102,328,1,0,1105,1,432,21101,0,387394675496,1,21102,1,339,0,1106,0,432,3,10,104,0,104,1,3,10,104,0,104,0,3,10,104,0,104,1,3,10,104,0,104,1,3,10,104,0,104,0,3,10,104,0,104,1,21102,46325083283,1,1,21102,1,386,0,1106,0,432,21101,0,179519401051,1,21102,397,1,0,1106,0,432,3,10,104,0,104,0,3,10,104,0,104,0,21102,1,868410348308,1,21102,1,420,0,1105,1,432,21102,718086501140,1,1,21102,1,431,0,1105,1,432,99,109,2,22101,0,-1,1,21101,40,0,2,21101,0,463,3,21101,453,0,0,1106,0,496,109,-2,2105,1,0,0,1,0,0,1,109,2,3,10,204,-1,1001,458,459,474,4,0,1001,458,1,458,108,4,458,10,1006,10,490,1101,0,0,458,109,-2,2105,1,0,0,109,4,2102,1,-1,495,1207,-3,0,10,1006,10,513,21102,0,1,-3,22102,1,-3,1,22102,1,-2,2,21102,1,1,3,21102,1,532,0,1105,1,537,109,-4,2105,1,0,109,5,1207,-3,1,10,1006,10,560,2207,-4,-2,10,1006,10,560,22101,0,-4,-4,1105,1,628,22102,1,-4,1,21201,-3,-1,2,21202,-2,2,3,21102,1,579,0,1105,1,537,22101,0,1,-4,21102,1,1,-1,2207,-4,-2,10,1006,10,598,21102,1,0,-1,22202,-2,-1,-2,2107,0,-3,10,1006,10,620,22102,1,-1,1,21102,1,620,0,105,1,495,21202,-2,-1,-2,22201,-4,-2,-4,109,-5,2106,0,0";
 
-processIntcodeProgram(input);
+console.log(processIntcodeProgram(input));
+
+type OutputMode = "paint" | "move";
 
 function processIntcodeProgram(programString: string): number {
-    const program = parseInputString(programString);
+    const program = appendEmptySpace(parseInputString(programString));
 
     const robot = new PaintingRobot();
 
     const computer = new IntcodeComputer(program, () => robot.getColor());
 
+    let outputMode: OutputMode = "paint";
     while (!computer.hasHalted()) {
-        const inputResult = computer.execute();
-        assertResultType(inputResult, "input");
-
-        const paintOutput = computer.execute();
-        if (paintOutput.op !== "output") {
-            throw new Error(
-                `Unexpected result. Expecting output; received ${paintOutput.op}`,
-            );
+        const result = computer.execute();
+        switch (result.op) {
+            case "output":
+                handleOutput(robot, result, outputMode);
+                outputMode = updateOutputMode(outputMode);
+            default:
+                // It's valid but do nothing.
+                continue;
         }
-        robot.paint(paintOutput.value);
-
-        const directionOutput = computer.execute();
-        if (directionOutput.op !== "output") {
-            throw new Error(
-                `Unexpected result. Expecting output; received ${paintOutput.op}`,
-            );
-        }
-        robot.move(directionOutput.value);
     }
 
     return robot.getDistinctPaintedCount();
 }
 
-function assertResultType(inputResult: ExecutionResult, expected: OpName) {
-    if (inputResult.op !== expected) {
-        throw new Error(
-            `Unexpected operation result. Expecting "${expected}"; received "${inputResult.op}"`,
-        );
+function parseInputString(inputString: string): number[] {
+    return inputString.split(",").map((numberString) => parseInt(numberString));
+}
+
+function appendEmptySpace(program: number[]): number[] {
+    return program.concat(new Array(program.length * 5).fill(0));
+}
+
+function handleOutput(
+    robot: PaintingRobot,
+    result: OutputResult,
+    outputMode: OutputMode,
+) {
+    switch (outputMode) {
+        case "move":
+            robot.move(result.value);
+            break;
+        case "paint":
+            robot.paint(result.value);
+            break;
     }
 }
 
-function parseInputString(inputString: string): number[] {
-    return inputString.split(",").map((numberString) => parseInt(numberString));
+function updateOutputMode(outputMode: OutputMode): OutputMode {
+    switch (outputMode) {
+        case "paint":
+            return "move";
+        case "move":
+            return "paint";
+    }
 }
